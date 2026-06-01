@@ -21,7 +21,6 @@ export type Business = {
   legal_form: string | null
   created_at: string
 }
-
 export type MaskedBusiness = {
   id: string
   name: string
@@ -42,7 +41,6 @@ export type MaskedBusiness = {
   revenue_label: string | null
   unlocked: Record<string, string>
 }
-
 export type Profile = {
   id: string
   email: string
@@ -51,7 +49,6 @@ export type Profile = {
   created_at: string
   updated_at: string
 }
-
 export type SearchFilters = {
   search?: string
   sector?: string
@@ -59,7 +56,6 @@ export type SearchFilters = {
   region?: string
   effectif_label?: string
 }
-
 export type Query = {
   id: string
   user_id: string
@@ -71,7 +67,6 @@ export type Query = {
   query_name: string | null
   created_at: string
 }
-
 export type CreditTransaction = {
   id: string
   user_id: string
@@ -82,7 +77,6 @@ export type CreditTransaction = {
   description: string | null
   created_at: string
 }
-
 export type SearchResult = {
   queryId: string
   businesses: MaskedBusiness[]
@@ -92,40 +86,21 @@ export type SearchResult = {
   fieldsRequested: string[]
   filters: SearchFilters
 }
-
 export type UnlockResponse = {
   value: string
   creditsSpent: number
   newBalance: number
   alreadyUnlocked: boolean
 }
-
 export type EstimateResult = {
   count: number
   costPerBusiness: number
   totalCost: number
   fieldsRequested: string[]
 }
-
-// ─── CRM ────────────────────────────────────────────────────
-export type CRMStatus =
-  | 'to_call'
-  | 'in_progress'
-  | 'callback'
-  | 'interested'
-  | 'not_interested'
-  | 'converted'
-  | 'archived'
-
+export type CRMStatus = 'to_call' | 'in_progress' | 'callback' | 'interested' | 'not_interested' | 'converted' | 'archived'
 export type CRMPriority = 'low' | 'normal' | 'high'
-
-export type CallOutcome =
-  | 'no_answer'
-  | 'voicemail'
-  | 'callback'
-  | 'interested'
-  | 'not_interested'
-
+export type CallOutcome = 'no_answer' | 'voicemail' | 'callback' | 'interested' | 'not_interested'
 export type CRMLead = {
   id: string
   user_id: string
@@ -138,11 +113,9 @@ export type CRMLead = {
   last_contacted_at: string | null
   created_at: string
   updated_at: string
-  // Joined
   business?: MaskedBusiness
   call_logs?: CRMCallLog[]
 }
-
 export type CRMCallLog = {
   id: string
   lead_id: string
