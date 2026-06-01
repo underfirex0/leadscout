@@ -40,7 +40,6 @@ export type MaskedBusiness = {
   dirigeant_phone: string | null
   dirigeant_email: string | null
   revenue_label: string | null
-  // Per-business unlocked fields (à la carte)
   unlocked: Record<string, string>
 }
 
@@ -106,4 +105,49 @@ export type EstimateResult = {
   costPerBusiness: number
   totalCost: number
   fieldsRequested: string[]
+}
+
+// ─── CRM ────────────────────────────────────────────────────
+export type CRMStatus =
+  | 'to_call'
+  | 'in_progress'
+  | 'callback'
+  | 'interested'
+  | 'not_interested'
+  | 'converted'
+  | 'archived'
+
+export type CRMPriority = 'low' | 'normal' | 'high'
+
+export type CallOutcome =
+  | 'no_answer'
+  | 'voicemail'
+  | 'callback'
+  | 'interested'
+  | 'not_interested'
+
+export type CRMLead = {
+  id: string
+  user_id: string
+  business_id: string
+  query_id: string | null
+  status: CRMStatus
+  priority: CRMPriority
+  notes: string | null
+  next_action_at: string | null
+  last_contacted_at: string | null
+  created_at: string
+  updated_at: string
+  // Joined
+  business?: MaskedBusiness
+  call_logs?: CRMCallLog[]
+}
+
+export type CRMCallLog = {
+  id: string
+  lead_id: string
+  user_id: string
+  outcome: CallOutcome
+  notes: string | null
+  called_at: string
 }
