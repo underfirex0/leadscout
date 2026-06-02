@@ -28,10 +28,15 @@ export default function MeetingsPage() {
   const [submittingFeedback, setSubmittingFeedback] = useState(false)
 
   async function fetchMeetings() {
-    const res = await fetch('/api/meetmaster/meetings?role=buyer')
-    const data = await res.json()
-    setMeetings(data.meetings ?? [])
-    setLoading(false)
+    try {
+      const res = await fetch('/api/meetmaster/meetings?role=buyer')
+      const data = await res.json()
+      setMeetings(data.meetings ?? [])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
   }
   useEffect(() => { fetchMeetings() }, [])
 
