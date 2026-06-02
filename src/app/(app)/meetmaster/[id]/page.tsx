@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import {
   ArrowLeft, Star, MapPin, CheckCircle, Crown,
-  Calendar, Clock, Linkedin, ChevronRight, Users, Zap
+  Calendar, Clock, Linkedin, ChevronRight, Users
 } from 'lucide-react'
 import type { Master } from '@/types'
 
@@ -20,33 +20,33 @@ const ROLE_CONFIG: Record<string, { gradient: string; badge: string }> = {
 }
 
 const AVATAR_BG: Record<string, string> = {
-  rose: 'fecdd3', blue: 'bfdbfe', amber: 'fde68a',
-  green: 'bbf7d0', teal: 'a7f3d0', violet: 'ddd6fe',
-  cyan: 'a5f3fc', fuchsia: 'f5d0fe',
+  'DRH':'fecdd3','Directrice des RH':'fbcfe8','DAF':'bfdbfe','DG / CEO':'fde68a',
+  'Directeur des Achats':'bbf7d0','Directrice des Achats':'a7f3d0',
+  'DSI':'ddd6fe','Directeur Commercial':'a5f3fc','Directeur Marketing':'f5d0fe',
 }
 
-function getAvatarUrl(master: Master): string {
-  if ((master as Record<string, unknown>).avatar_url) return (master as Record<string, unknown>).avatar_url as string
-  const cfg = ROLE_CONFIG[master.role]
-  const bgMap: Record<string, string> = {
-    'DRH': 'rose', 'Directrice des RH': 'rose', 'DAF': 'blue', 'DG / CEO': 'amber',
-    'Directeur des Achats': 'green', 'Directrice des Achats': 'teal', 'DSI': 'violet',
-    'Directeur Commercial': 'cyan', 'Directeur Marketing': 'fuchsia',
-  }
-  const bg = AVATAR_BG[bgMap[master.role]] ?? 'e2e8f0'
-  const seed = encodeURIComponent(master.display_name.replace(/\s/g, '').replace('.', ''))
+function getAvatarUrl(m: Master & { avatar_url?: string | null }): string {
+  if (m.avatar_url) return m.avatar_url
+  const bg   = AVATAR_BG[m.role] ?? 'e2e8f0'
+  const seed = encodeURIComponent(m.display_name.replace(/[\s.]/g, ''))
   return `https://api.dicebear.com/9.x/micah/svg?seed=${seed}&backgroundColor=${bg}`
 }
 
 export default async function MasterProfilePage({ params }: { params: { id: string } }) {
   const { data: master, error } = await supabaseAdmin
-    .from('masters').select('*').eq('id', params.id).eq('application_status', 'approved').single()
+    .from('masters')
+    .select('*')
+    .eq('id', params.id)
+    .eq('application_status', 'approved')
+    .single()
 
   if (error || !master) notFound()
 
-  const m = master as Master
-  const cfg = ROLE_CONFIG[m.role] ?? { gradient: 'from-slate-500 to-slate-700', badge: 'bg-slate-50 text-slate-700' }
+  const m = master as Master & { avatar_url?: string | null }
+  const cfg       = ROLE_CONFIG[m.role] ?? { gradient: 'from-slate-500 to-slate-700', badge: 'bg-slate-50 text-slate-700' }
   const avatarUrl = getAvatarUrl(m)
+  const expertise = m.expertise ?? []
+  const topics    = m.topics    ?? []
 
   return (
     <div className="max-w-3xl mx-auto space-y-5 animate-fade-in">
@@ -56,7 +56,6 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
 
       {/* Profile card */}
       <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-        {/* Header gradient */}
         <div className={`h-28 bg-gradient-to-br ${cfg.gradient} relative`}>
           <div className="absolute inset-0 opacity-20 grid-bg" />
         </div>
@@ -65,9 +64,9 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
           {/* Avatar row */}
           <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12 mb-6">
             <div className="flex items-end gap-4">
-              <div className="relative w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-white shadow-lg shrink-0">
-                <img src={avatarUrl} alt={m.display_name} className="w-full h-full object-cover"
-                  onError={() => {}} />
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-white shadow-lg shrink-0 bg-slate-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={avatarUrl} alt={m.display_name} className="w-full h-full object-cover" />
               </div>
               <div className="mb-1">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -87,7 +86,7 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
             </div>
 
             {m.average_rating && (
-              <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 self-start sm:self-auto">
+              <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 self-start">
                 <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
                 <span className="font-bold text-slate-900 text-lg">{m.average_rating}</span>
                 <span className="text-slate-400 text-sm">/5 · {m.meetings_completed} meetings</span>
@@ -95,14 +94,14 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
             )}
           </div>
 
-          {/* Meta row */}
+          {/* Meta */}
           <div className="flex flex-wrap gap-5 pb-5 mb-6 border-b border-slate-100">
             {([
               { icon: Clock,    text: '30 minutes' },
               { icon: Calendar, text: `${m.max_meetings_per_month} meetings / mois` },
               ...(m.city           ? [{ icon: MapPin, text: m.city }]           : []),
               ...(m.company_sector ? [{ icon: Users,  text: m.company_sector }] : []),
-            ] as { icon: React.ElementType, text: string }[]).map(({ icon: Icon, text }) => (
+            ] as { icon: React.ElementType; text: string }[]).map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-1.5 text-sm text-slate-500">
                 <Icon className="w-4 h-4 text-slate-400" />
                 {text}
@@ -125,11 +124,11 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
           )}
 
           {/* Expertise */}
-          {m.expertise.length > 0 && (
+          {expertise.length > 0 && (
             <div className="mb-6">
               <h2 className="font-bold text-slate-900 mb-3" style={{ fontFamily: 'Syne,sans-serif' }}>Expertises</h2>
               <div className="flex flex-wrap gap-2">
-                {m.expertise.map((tag: string) => (
+                {expertise.map((tag: string) => (
                   <span key={tag} className="bg-slate-50 border border-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full">
                     {tag}
                   </span>
@@ -139,13 +138,13 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
           )}
 
           {/* Topics */}
-          {m.topics.length > 0 && (
+          {topics.length > 0 && (
             <div>
               <h2 className="font-bold text-slate-900 mb-3" style={{ fontFamily: 'Syne,sans-serif' }}>
                 Ce que vous apprendrez
               </h2>
               <ul className="space-y-2.5">
-                {m.topics.map((topic: string) => (
+                {topics.map((topic: string) => (
                   <li key={topic} className="flex items-start gap-2.5 text-sm text-slate-600">
                     <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
                       <CheckCircle className="w-3 h-3 text-emerald-600" />
