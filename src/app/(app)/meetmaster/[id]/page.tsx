@@ -3,105 +3,115 @@ import Link from 'next/link'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 import {
   ArrowLeft, Star, MapPin, CheckCircle, Crown,
-  Calendar, Clock, Building2, Linkedin, ChevronRight
+  Calendar, Clock, Linkedin, ChevronRight, Users, Zap
 } from 'lucide-react'
 import type { Master } from '@/types'
 
-function RoleGradient({ role }: { role: string }) {
-  const colors: Record<string, string> = {
-    'DRH': 'from-rose-500 to-pink-600',
-    'Directrice des RH': 'from-rose-500 to-pink-600',
-    'DAF': 'from-blue-500 to-indigo-600',
-    'DG / CEO': 'from-amber-500 to-orange-600',
-    'Directeur des Achats': 'from-emerald-500 to-teal-600',
-    'Directrice des Achats': 'from-emerald-500 to-teal-600',
-    'DSI': 'from-violet-500 to-purple-600',
-    'Directeur Commercial': 'from-cyan-500 to-blue-600',
-    'Directeur Marketing': 'from-fuchsia-500 to-pink-600',
+const ROLE_CONFIG: Record<string, { gradient: string; badge: string }> = {
+  'DRH':                   { gradient: 'from-rose-400 to-pink-500',    badge: 'bg-rose-50 text-rose-700' },
+  'Directrice des RH':     { gradient: 'from-rose-400 to-pink-500',    badge: 'bg-rose-50 text-rose-700' },
+  'DAF':                   { gradient: 'from-blue-500 to-indigo-600',   badge: 'bg-blue-50 text-blue-700' },
+  'DG / CEO':              { gradient: 'from-amber-400 to-orange-500', badge: 'bg-amber-50 text-amber-700' },
+  'Directeur des Achats':  { gradient: 'from-emerald-500 to-teal-600', badge: 'bg-emerald-50 text-emerald-700' },
+  'Directrice des Achats': { gradient: 'from-emerald-500 to-teal-600', badge: 'bg-emerald-50 text-emerald-700' },
+  'DSI':                   { gradient: 'from-violet-500 to-purple-600', badge: 'bg-violet-50 text-violet-700' },
+  'Directeur Commercial':  { gradient: 'from-cyan-500 to-sky-600',     badge: 'bg-cyan-50 text-cyan-700' },
+  'Directeur Marketing':   { gradient: 'from-fuchsia-500 to-pink-600', badge: 'bg-fuchsia-50 text-fuchsia-700' },
+}
+
+const AVATAR_BG: Record<string, string> = {
+  rose: 'fecdd3', blue: 'bfdbfe', amber: 'fde68a',
+  green: 'bbf7d0', teal: 'a7f3d0', violet: 'ddd6fe',
+  cyan: 'a5f3fc', fuchsia: 'f5d0fe',
+}
+
+function getAvatarUrl(master: Master): string {
+  if ((master as Record<string, unknown>).avatar_url) return (master as Record<string, unknown>).avatar_url as string
+  const cfg = ROLE_CONFIG[master.role]
+  const bgMap: Record<string, string> = {
+    'DRH': 'rose', 'Directrice des RH': 'rose', 'DAF': 'blue', 'DG / CEO': 'amber',
+    'Directeur des Achats': 'green', 'Directrice des Achats': 'teal', 'DSI': 'violet',
+    'Directeur Commercial': 'cyan', 'Directeur Marketing': 'fuchsia',
   }
-  return colors[role] || 'from-slate-500 to-slate-700'
+  const bg = AVATAR_BG[bgMap[master.role]] ?? 'e2e8f0'
+  const seed = encodeURIComponent(master.display_name.replace(/\s/g, '').replace('.', ''))
+  return `https://api.dicebear.com/9.x/micah/svg?seed=${seed}&backgroundColor=${bg}`
 }
 
 export default async function MasterProfilePage({ params }: { params: { id: string } }) {
   const { data: master, error } = await supabaseAdmin
-    .from('masters')
-    .select('*')
-    .eq('id', params.id)
-    .eq('application_status', 'approved')
-    .single()
+    .from('masters').select('*').eq('id', params.id).eq('application_status', 'approved').single()
 
   if (error || !master) notFound()
 
   const m = master as Master
-  const gradient = RoleGradient({ role: m.role })
+  const cfg = ROLE_CONFIG[m.role] ?? { gradient: 'from-slate-500 to-slate-700', badge: 'bg-slate-50 text-slate-700' }
+  const avatarUrl = getAvatarUrl(m)
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-3xl mx-auto space-y-5 animate-fade-in">
       <Link href="/meetmaster" className="btn-secondary inline-flex items-center gap-2 text-sm">
         <ArrowLeft className="w-4 h-4" /> Tous les Masters
       </Link>
 
-      {/* Profile header */}
-      <div className="card overflow-hidden">
-        <div className={`h-32 bg-gradient-to-br ${gradient} relative`}>
+      {/* Profile card */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
+        {/* Header gradient */}
+        <div className={`h-28 bg-gradient-to-br ${cfg.gradient} relative`}>
           <div className="absolute inset-0 opacity-20 grid-bg" />
-          {m.is_verified && (
-            <div className="absolute top-4 right-4 bg-white/20 backdrop-blur text-white text-xs font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
-              <CheckCircle className="w-3.5 h-3.5" /> Master Vérifié
-            </div>
-          )}
         </div>
-        <div className="px-8 pb-8">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 -mt-10 mb-6">
+
+        <div className="px-7 pb-7">
+          {/* Avatar row */}
+          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 -mt-12 mb-6">
             <div className="flex items-end gap-4">
-              <div className={`w-20 h-20 rounded-2xl bg-gradient-to-br ${gradient} border-4 border-white shadow-lg flex items-center justify-center text-white text-xl font-bold`}>
-                {m.display_name.split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)}
+              <div className="relative w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-white shadow-lg shrink-0">
+                <img src={avatarUrl} alt={m.display_name} className="w-full h-full object-cover"
+                  onError={() => {}} />
               </div>
               <div className="mb-1">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold text-slate-900" style={{fontFamily:'Syne,sans-serif'}}>{m.display_name}</h1>
-                  <Crown className="w-5 h-5 text-amber-500" />
-                </div>
-                <p className="text-indigo-600 font-semibold">{m.role}</p>
-                <div className="flex items-center gap-3 mt-1 text-sm text-slate-500">
-                  {m.company_sector && <span>{m.company_sector}</span>}
-                  {m.company_size && <span>· {m.company_size}</span>}
-                  {m.city && (
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" />{m.city}
-                    </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-2xl font-bold text-slate-900" style={{ fontFamily: 'Syne,sans-serif' }}>
+                    {m.display_name}
+                  </h1>
+                  {m.is_verified && (
+                    <div className="flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5 text-xs font-semibold text-amber-700">
+                      <CheckCircle className="w-3 h-3" /> Vérifié
+                    </div>
                   )}
                 </div>
+                <span className={`inline-block text-sm font-semibold px-3 py-1 rounded-full mt-1 ${cfg.badge}`}>
+                  {m.role}
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-6 shrink-0">
-              {m.average_rating && (
-                <div className="text-center">
-                  <div className="flex items-center gap-1 justify-center">
-                    <Star className="w-5 h-5 fill-amber-400 text-amber-400" />
-                    <span className="text-2xl font-bold text-slate-900">{m.average_rating}</span>
-                  </div>
-                  <p className="text-xs text-slate-400">{m.meetings_completed} meetings</p>
-                </div>
-              )}
-            </div>
+            {m.average_rating && (
+              <div className="flex items-center gap-2 bg-slate-50 rounded-xl px-4 py-2.5 self-start sm:self-auto">
+                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                <span className="font-bold text-slate-900 text-lg">{m.average_rating}</span>
+                <span className="text-slate-400 text-sm">/5 · {m.meetings_completed} meetings</span>
+              </div>
+            )}
           </div>
 
-          {/* Stats row */}
-          <div className="flex flex-wrap gap-6 py-5 border-y border-slate-100 mb-6">
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <Clock className="w-4 h-4 text-slate-400" />
-              <span>30 minutes par meeting</span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-slate-600">
-              <Calendar className="w-4 h-4 text-slate-400" />
-              <span>Jusqu'à {m.max_meetings_per_month} meetings/mois</span>
-            </div>
+          {/* Meta row */}
+          <div className="flex flex-wrap gap-5 pb-5 mb-6 border-b border-slate-100">
+            {([
+              { icon: Clock,    text: '30 minutes' },
+              { icon: Calendar, text: `${m.max_meetings_per_month} meetings / mois` },
+              ...(m.city           ? [{ icon: MapPin, text: m.city }]           : []),
+              ...(m.company_sector ? [{ icon: Users,  text: m.company_sector }] : []),
+            ] as { icon: React.ElementType, text: string }[]).map(({ icon: Icon, text }) => (
+              <div key={text} className="flex items-center gap-1.5 text-sm text-slate-500">
+                <Icon className="w-4 h-4 text-slate-400" />
+                {text}
+              </div>
+            ))}
             {m.linkedin_url && (
               <a href={m.linkedin_url} target="_blank" rel="noopener noreferrer"
-                className="flex items-center gap-2 text-sm text-blue-600 hover:underline">
-                <Linkedin className="w-4 h-4" /> Profil LinkedIn
+                className="flex items-center gap-1.5 text-sm text-blue-600 hover:underline">
+                <Linkedin className="w-4 h-4" /> LinkedIn
               </a>
             )}
           </div>
@@ -109,7 +119,7 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
           {/* Bio */}
           {m.bio && (
             <div className="mb-6">
-              <h2 className="font-bold text-slate-900 mb-2" style={{fontFamily:'Syne,sans-serif'}}>À propos</h2>
+              <h2 className="font-bold text-slate-900 mb-2" style={{ fontFamily: 'Syne,sans-serif' }}>À propos</h2>
               <p className="text-slate-600 leading-relaxed">{m.bio}</p>
             </div>
           )}
@@ -117,10 +127,10 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
           {/* Expertise */}
           {m.expertise.length > 0 && (
             <div className="mb-6">
-              <h2 className="font-bold text-slate-900 mb-3" style={{fontFamily:'Syne,sans-serif'}}>Expertises</h2>
+              <h2 className="font-bold text-slate-900 mb-3" style={{ fontFamily: 'Syne,sans-serif' }}>Expertises</h2>
               <div className="flex flex-wrap gap-2">
                 {m.expertise.map((tag: string) => (
-                  <span key={tag} className="bg-indigo-50 text-indigo-700 border border-indigo-100 text-xs font-semibold px-3 py-1.5 rounded-full">
+                  <span key={tag} className="bg-slate-50 border border-slate-100 text-slate-600 text-xs font-semibold px-3 py-1.5 rounded-full">
                     {tag}
                   </span>
                 ))}
@@ -131,13 +141,15 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
           {/* Topics */}
           {m.topics.length > 0 && (
             <div>
-              <h2 className="font-bold text-slate-900 mb-3" style={{fontFamily:'Syne,sans-serif'}}>
+              <h2 className="font-bold text-slate-900 mb-3" style={{ fontFamily: 'Syne,sans-serif' }}>
                 Ce que vous apprendrez
               </h2>
-              <ul className="space-y-2">
+              <ul className="space-y-2.5">
                 {m.topics.map((topic: string) => (
                   <li key={topic} className="flex items-start gap-2.5 text-sm text-slate-600">
-                    <CheckCircle className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                    <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                    </div>
                     {topic}
                   </li>
                 ))}
@@ -148,24 +160,26 @@ export default async function MasterProfilePage({ params }: { params: { id: stri
       </div>
 
       {/* Booking CTA */}
-      <div className="card p-6 bg-gradient-to-br from-amber-50 to-orange-50 border-amber-200">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+      <div className="bg-gradient-to-br from-slate-900 to-slate-800 rounded-2xl p-7 relative overflow-hidden">
+        <div className="absolute inset-0 grid-bg opacity-20" />
+        <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 blur-3xl" />
+        <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
           <div>
-            <h3 className="text-xl font-bold text-slate-900 mb-1" style={{fontFamily:'Syne,sans-serif'}}>
-              Réserver un meeting avec {m.display_name}
-            </h3>
-            <p className="text-slate-600 text-sm">
-              30 minutes · Visioconférence · Réponse sous 24h
-            </p>
-            <div className="flex items-center gap-4 mt-3">
-              <div>
-                <p className="text-2xl font-bold text-slate-900">1 000 MAD</p>
-                <p className="text-xs text-slate-400">Facturation après confirmation</p>
-              </div>
+            <div className="flex items-center gap-2 mb-2">
+              <Crown className="w-5 h-5 text-amber-400" />
+              <p className="font-bold text-white text-lg" style={{ fontFamily: 'Syne,sans-serif' }}>
+                Réserver un meeting
+              </p>
+            </div>
+            <p className="text-white/50 text-sm mb-3">30 minutes · Visioconférence · Réponse sous 24h</p>
+            <div className="flex items-baseline gap-2">
+              <span className="text-3xl font-bold text-white" style={{ fontFamily: 'Syne,sans-serif' }}>1 000</span>
+              <span className="text-white/50">MAD</span>
+              <span className="text-white/30 text-sm">· facture après confirmation</span>
             </div>
           </div>
           <Link href={`/meetmaster/book/${m.id}`}
-            className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-bold px-8 py-4 rounded-2xl hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 transition-all text-sm whitespace-nowrap">
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-bold px-7 py-3.5 rounded-xl hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5 transition-all text-sm whitespace-nowrap">
             Réserver ce meeting
             <ChevronRight className="w-4 h-4" />
           </Link>
