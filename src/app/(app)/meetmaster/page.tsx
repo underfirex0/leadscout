@@ -4,255 +4,366 @@ import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import {
   Crown, Star, MapPin, Search, ChevronRight,
-  CheckCircle, Users, Calendar, Loader2, Filter, Sparkles
+  CheckCircle, Calendar, Sparkles, ArrowRight,
+  Users, Zap, Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { Master } from '@/types'
 
-const ROLES = ['DRH','DAF','Directeur des Achats','Directrice des Achats',
-  'DG / CEO','Directeur Commercial','DSI','Directeur Marketing','Directrice des RH']
-const SECTORS = ['Industrie & Manufacturing','Services Financiers','Grande Distribution',
-  'Technologies de l\'information','Santé & Pharma','BTP & Construction',
-  'FMCG & Agroalimentaire','Immobilier & Construction']
-const CITIES = ['Casablanca','Rabat','Tanger','Marrakech','Agadir','Fès']
-
-function RoleIcon({ role }: { role: string }) {
-  const colors: Record<string, string> = {
-    'DRH': 'from-rose-500 to-pink-600',
-    'Directrice des RH': 'from-rose-500 to-pink-600',
-    'DAF': 'from-blue-500 to-indigo-600',
-    'DG / CEO': 'from-amber-500 to-orange-600',
-    'Directeur des Achats': 'from-emerald-500 to-teal-600',
-    'Directrice des Achats': 'from-emerald-500 to-teal-600',
-    'DSI': 'from-violet-500 to-purple-600',
-    'Directeur Commercial': 'from-cyan-500 to-blue-600',
-    'Directeur Marketing': 'from-fuchsia-500 to-pink-600',
-  }
-  const gradient = colors[role] || 'from-slate-500 to-slate-700'
-  return (
-    <div className={`bg-gradient-to-br ${gradient} text-white text-sm font-bold w-full h-full flex items-center justify-center`}>
-      {role.split(' ').map(w => w[0]).join('').slice(0, 3)}
-    </div>
-  )
+// ── Role config ───────────────────────────────────────────────
+const ROLE_CONFIG: Record<string, { gradient: string; badge: string; seed: string }> = {
+  'DRH':                    { gradient: 'from-rose-400 to-pink-500',      badge: 'bg-rose-50 text-rose-700 border-rose-100',      seed: 'rose' },
+  'Directrice des RH':      { gradient: 'from-rose-400 to-pink-500',      badge: 'bg-rose-50 text-rose-700 border-rose-100',      seed: 'pink' },
+  'DAF':                    { gradient: 'from-blue-500 to-indigo-600',     badge: 'bg-blue-50 text-blue-700 border-blue-100',      seed: 'blue' },
+  'DG / CEO':               { gradient: 'from-amber-400 to-orange-500',   badge: 'bg-amber-50 text-amber-700 border-amber-100',   seed: 'amber' },
+  'Directeur des Achats':   { gradient: 'from-emerald-500 to-teal-600',   badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', seed: 'green' },
+  'Directrice des Achats':  { gradient: 'from-emerald-500 to-teal-600',   badge: 'bg-emerald-50 text-emerald-700 border-emerald-100', seed: 'teal' },
+  'DSI':                    { gradient: 'from-violet-500 to-purple-600',   badge: 'bg-violet-50 text-violet-700 border-violet-100', seed: 'violet' },
+  'Directeur Commercial':   { gradient: 'from-cyan-500 to-sky-600',       badge: 'bg-cyan-50 text-cyan-700 border-cyan-100',      seed: 'cyan' },
+  'Directeur Marketing':    { gradient: 'from-fuchsia-500 to-pink-600',   badge: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-100', seed: 'fuchsia' },
 }
 
-function MasterCard({ master }: { master: Master }) {
-  const initials = master.display_name.split(' ').map(w => w[0]).join('').toUpperCase()
+const DEFAULT_ROLE = { gradient: 'from-slate-500 to-slate-700', badge: 'bg-slate-50 text-slate-700 border-slate-100', seed: 'default' }
+
+const AVATAR_BG: Record<string, string> = {
+  rose: 'fecdd3', pink: 'fbcfe8', blue: 'bfdbfe', amber: 'fde68a',
+  green: 'bbf7d0', teal: 'a7f3d0', violet: 'ddd6fe', cyan: 'a5f3fc',
+  fuchsia: 'f5d0fe', default: 'e2e8f0',
+}
+
+function getAvatarUrl(displayName: string, role: string, avatarUrl?: string | null): string {
+  if (avatarUrl) return avatarUrl
+  const cfg = ROLE_CONFIG[role] ?? DEFAULT_ROLE
+  const bg  = AVATAR_BG[cfg.seed] ?? 'e2e8f0'
+  const seed = encodeURIComponent(displayName.replace(/\s/g, '').replace('.', ''))
+  return `https://api.dicebear.com/9.x/micah/svg?seed=${seed}&backgroundColor=${bg}`
+}
+
+const ROLE_FILTERS = [
+  'DRH', 'DAF', 'DG / CEO', 'Directeur des Achats',
+  'Directrice des Achats', 'DSI', 'Directeur Commercial',
+]
+
+// ── Master Card ───────────────────────────────────────────────
+function MasterCard({ master, index }: { master: Master; index: number }) {
+  const cfg        = ROLE_CONFIG[master.role] ?? DEFAULT_ROLE
+  const avatarUrl  = getAvatarUrl(master.display_name, master.role, (master as unknown as Record<string, string>).avatar_url ?? null)
+
   return (
     <Link href={`/meetmaster/${master.id}`}
-      className="bg-white rounded-2xl border border-slate-200 hover:border-amber-300 hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 group overflow-hidden flex flex-col">
-      {/* Header */}
-      <div className="relative h-24 bg-gradient-to-br from-slate-800 to-slate-900 overflow-hidden">
-        <div className="absolute inset-0 opacity-10"
-          style={{ backgroundImage: 'radial-gradient(circle at 50% 100%, rgba(251,191,36,0.4), transparent 70%)' }} />
-        {master.is_verified && (
-          <div className="absolute top-3 right-3 bg-amber-400 text-amber-900 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-            <CheckCircle className="w-2.5 h-2.5" /> Vérifié
+      className="group bg-white rounded-2xl border border-slate-100 hover:border-amber-200 hover:shadow-xl hover:shadow-amber-500/5 hover:-translate-y-1 transition-all duration-300 overflow-hidden flex flex-col animate-fade-in"
+      style={{ animationDelay: `${index * 60}ms` }}>
+
+      {/* Top accent line */}
+      <div className={`h-0.5 w-full bg-gradient-to-r ${cfg.gradient}`} />
+
+      <div className="p-5 flex gap-4 flex-1">
+        {/* Avatar column */}
+        <div className="shrink-0 flex flex-col items-center gap-2">
+          <div className="relative">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden ring-2 ring-white shadow-md">
+              <img
+                src={avatarUrl}
+                alt={master.display_name}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const initials = master.display_name.split(' ').map(w => w[0]).join('').slice(0, 2)
+                  e.currentTarget.style.display = 'none'
+                  const parent = e.currentTarget.parentElement!
+                  parent.innerHTML = `<div class="w-full h-full bg-gradient-to-br ${cfg.gradient} flex items-center justify-center text-white font-bold text-lg">${initials}</div>`
+                }}
+              />
+            </div>
+            {master.is_verified && (
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-amber-400 rounded-full flex items-center justify-center shadow-sm border-2 border-white">
+                <CheckCircle className="w-2.5 h-2.5 text-white" />
+              </div>
+            )}
           </div>
-        )}
-        <div className="absolute -bottom-8 left-5">
-          <div className="w-16 h-16 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
-            <RoleIcon role={master.role} />
+
+          {/* Rating */}
+          {master.average_rating && (
+            <div className="flex items-center gap-0.5">
+              <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+              <span className="text-xs font-bold text-slate-700">{master.average_rating}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Info column */}
+        <div className="flex-1 min-w-0">
+          {/* Name + role */}
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <h3 className="font-bold text-slate-900 text-base leading-tight truncate" style={{ fontFamily: 'Syne,sans-serif' }}>
+              {master.display_name}
+            </h3>
+          </div>
+
+          <div className="flex items-center gap-2 mb-2 flex-wrap">
+            <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full border', cfg.badge)}>
+              {master.role}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-xs text-slate-400 mb-3 flex-wrap">
+            {master.company_sector && <span>{master.company_sector}</span>}
+            {master.city && (
+              <span className="flex items-center gap-0.5">
+                <MapPin className="w-3 h-3" />{master.city}
+              </span>
+            )}
+            {master.meetings_completed > 0 && (
+              <span className="text-slate-300">·</span>
+            )}
+            {master.meetings_completed > 0 && (
+              <span>{master.meetings_completed} meetings</span>
+            )}
+          </div>
+
+          {/* Tags */}
+          <div className="flex flex-wrap gap-1">
+            {master.expertise.slice(0, 3).map(tag => (
+              <span key={tag} className="text-[10px] font-medium bg-slate-50 text-slate-500 border border-slate-100 px-2 py-0.5 rounded-full">
+                {tag}
+              </span>
+            ))}
+            {master.expertise.length > 3 && (
+              <span className="text-[10px] font-medium text-slate-400 px-1">
+                +{master.expertise.length - 3}
+              </span>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Body */}
-      <div className="pt-10 px-5 pb-5 flex flex-col flex-1">
-        <div className="mb-3">
-          <h3 className="font-bold text-slate-900 text-base leading-tight" style={{fontFamily:'Syne,sans-serif'}}>
-            {master.display_name}
-          </h3>
-          <p className="text-sm text-indigo-600 font-semibold mt-0.5">{master.role}</p>
-          {master.company_sector && (
-            <p className="text-xs text-slate-500 mt-0.5">{master.company_sector}</p>
-          )}
+      {/* Footer */}
+      <div className="px-5 py-3.5 border-t border-slate-50 flex items-center justify-between bg-slate-50/50">
+        <div>
+          <p className="text-xs text-slate-400">{master.max_meetings_per_month} sessions/mois</p>
+          <p className="font-bold text-slate-900 text-sm">
+            1 000 MAD <span className="text-xs text-slate-400 font-normal">/ 30 min</span>
+          </p>
         </div>
-
-        {/* Stats */}
-        <div className="flex items-center gap-3 mb-3">
-          {master.average_rating && (
-            <div className="flex items-center gap-1">
-              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-              <span className="text-sm font-bold text-slate-800">{master.average_rating}</span>
-            </div>
-          )}
-          {master.meetings_completed > 0 && (
-            <span className="text-xs text-slate-400">{master.meetings_completed} meetings</span>
-          )}
-          {master.city && (
-            <div className="flex items-center gap-1 text-xs text-slate-400">
-              <MapPin className="w-3 h-3" />{master.city}
-            </div>
-          )}
-        </div>
-
-        {/* Expertise tags */}
-        <div className="flex flex-wrap gap-1.5 mb-4 flex-1">
-          {master.expertise.slice(0, 3).map(tag => (
-            <span key={tag} className="text-[10px] font-semibold bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full">
-              {tag}
-            </span>
-          ))}
-          {master.expertise.length > 3 && (
-            <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">
-              +{master.expertise.length - 3}
-            </span>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-          <div>
-            <p className="text-xs text-slate-400">{master.max_meetings_per_month} meetings/mois</p>
-            <p className="font-bold text-slate-900 text-sm">1 000 MAD<span className="text-xs text-slate-400 font-normal"> / 30 min</span></p>
-          </div>
-          <div className="w-8 h-8 bg-amber-50 group-hover:bg-amber-400 rounded-xl flex items-center justify-center transition-colors">
-            <ChevronRight className="w-4 h-4 text-amber-500 group-hover:text-white transition-colors" />
-          </div>
+        <div className="w-8 h-8 rounded-xl bg-amber-50 group-hover:bg-amber-400 flex items-center justify-center transition-all duration-200">
+          <ChevronRight className="w-4 h-4 text-amber-500 group-hover:text-white transition-colors" />
         </div>
       </div>
     </Link>
   )
 }
 
+// ── Main page ─────────────────────────────────────────────────
 export default function MeetMasterPage() {
-  const [masters, setMasters] = useState<Master[]>([])
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
+  const [masters, setMasters]       = useState<Master[]>([])
+  const [loading, setLoading]       = useState(true)
+  const [search, setSearch]         = useState('')
   const [roleFilter, setRoleFilter] = useState('')
-  const [sectorFilter, setSectorFilter] = useState('')
   const [cityFilter, setCityFilter] = useState('')
 
   useEffect(() => {
     fetch('/api/meetmaster/masters')
       .then(r => r.json())
-      .then(d => setMasters(d.masters ?? []))
+      .then(d => {
+        // Deduplicate by display_name (in case seed ran twice)
+        const seen = new Set<string>()
+        const unique = (d.masters ?? []).filter((m: Master) => {
+          if (seen.has(m.display_name)) return false
+          seen.add(m.display_name)
+          return true
+        })
+        setMasters(unique)
+      })
       .finally(() => setLoading(false))
   }, [])
 
+  const cities = useMemo(() => [...new Set(masters.map(m => m.city).filter(Boolean))].sort() as string[], [masters])
+
   const filtered = useMemo(() => masters.filter(m => {
-    if (roleFilter   && m.role !== roleFilter) return false
-    if (sectorFilter && m.company_sector !== sectorFilter) return false
-    if (cityFilter   && m.city !== cityFilter) return false
+    if (roleFilter && m.role !== roleFilter) return false
+    if (cityFilter && m.city !== cityFilter) return false
     if (search) {
       const q = search.toLowerCase()
-      return m.display_name.toLowerCase().includes(q) ||
+      return (
+        m.display_name.toLowerCase().includes(q) ||
         m.role.toLowerCase().includes(q) ||
         m.expertise.some(e => e.toLowerCase().includes(q)) ||
         (m.company_sector?.toLowerCase().includes(q) ?? false)
+      )
     }
     return true
-  }), [masters, search, roleFilter, sectorFilter, cityFilter])
-
-  const hasFilters = search || roleFilter || sectorFilter || cityFilter
+  }), [masters, search, roleFilter, cityFilter])
 
   return (
-    <div className="space-y-8 animate-fade-in">
-      {/* Hero banner */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 to-slate-800 p-8 md:p-12">
-        <div className="absolute inset-0 opacity-20"
-          style={{ backgroundImage: 'radial-gradient(circle at 70% 50%, rgba(251,191,36,0.4), transparent 60%)' }} />
-        <div className="absolute inset-0 grid-bg opacity-30" />
+    <div className="space-y-10 animate-fade-in">
+
+      {/* ── Hero ── */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-8 py-12 md:px-12">
+        {/* Background effects */}
+        <div className="absolute inset-0 grid-bg opacity-20 pointer-events-none" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/10 blur-3xl rounded-full pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 blur-3xl rounded-full pointer-events-none" />
 
         <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-8">
-          <div>
-            <div className="inline-flex items-center gap-2 bg-amber-400/20 border border-amber-400/30 rounded-full px-4 py-1.5 text-sm text-amber-300 font-semibold mb-5">
-              <Crown className="w-4 h-4" /> MeetMaster
+          <div className="max-w-xl">
+            <div className="inline-flex items-center gap-2 bg-amber-400/15 border border-amber-400/25 rounded-full px-4 py-1.5 text-sm font-semibold text-amber-300 mb-5">
+              <Crown className="w-4 h-4" />
+              MeetMaster by LeadScout
             </div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-3" style={{fontFamily:'Syne,sans-serif'}}>
-              Rencontrez les décideurs<br />qui transforment votre business.
+            <h1 className="text-3xl md:text-4xl font-bold text-white leading-tight mb-3" style={{ fontFamily: 'Syne,sans-serif' }}>
+              Rencontrez les décideurs qui<br className="hidden md:block" />
+              <span className="text-amber-400"> transforment votre business.</span>
             </h1>
-            <p className="text-white/50 text-lg max-w-xl">
-              30 minutes avec un DRH, DAF ou Directeur Achats qualifié.
-              Benchmark, insights, réseau — 1 000 MAD par meeting.
+            <p className="text-white/50 leading-relaxed">
+              30 minutes avec un DRH, DAF ou Directeur Achats de top entreprise.
+              Benchmark de marché, insights exclusifs, réseau direct. 1 000 MAD le meeting.
             </p>
+
+            {/* Trust row */}
+            <div className="flex items-center gap-6 mt-6 flex-wrap">
+              {[
+                { icon: Users,   text: `${masters.length} Masters actifs` },
+                { icon: Clock,   text: '30 min · Visio' },
+                { icon: Zap,     text: 'Réponse sous 24h' },
+              ].map(({ icon: Icon, text }) => (
+                <div key={text} className="flex items-center gap-1.5 text-sm text-white/50">
+                  <Icon className="w-3.5 h-3.5 text-amber-400/70" />
+                  {text}
+                </div>
+              ))}
+            </div>
           </div>
 
+          {/* Right side */}
           <div className="flex flex-col gap-3 shrink-0">
-            <div className="bg-white/10 border border-white/20 rounded-2xl p-5 text-center">
-              <p className="text-3xl font-bold text-white" style={{fontFamily:'Syne,sans-serif'}}>{masters.length}</p>
-              <p className="text-white/50 text-sm">Masters disponibles</p>
+            <div className="bg-white/8 backdrop-blur border border-white/10 rounded-2xl p-5 text-center min-w-36">
+              <p className="text-4xl font-bold text-white" style={{ fontFamily: 'Syne,sans-serif' }}>
+                {masters.length}
+              </p>
+              <p className="text-white/40 text-xs mt-1">Masters disponibles</p>
             </div>
             <Link href="/meetmaster/apply"
-              className="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-bold px-5 py-3 rounded-xl text-sm text-center hover:shadow-lg hover:shadow-amber-500/25 hover:-translate-y-0.5 transition-all">
-              Devenir Master →
+              className="bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-bold px-5 py-3 rounded-xl text-sm text-center hover:shadow-lg hover:shadow-amber-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2">
+              Devenir Master
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         </div>
       </div>
 
-      {/* How it works */}
+      {/* ── How it works ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { icon: Search, label: 'Choisissez un Master', desc: 'Filtrez par rôle, secteur ou ville', color: 'text-indigo-600 bg-indigo-50' },
-          { icon: Calendar, label: 'Proposez un créneau', desc: '3 dates de préférence pour 30 min', color: 'text-amber-600 bg-amber-50' },
-          { icon: Sparkles, label: 'Rencontrez-vous', desc: 'Meeting visio confirmé sous 24h', color: 'text-emerald-600 bg-emerald-50' },
-        ].map(({ icon: Icon, label, desc, color }) => (
-          <div key={label} className="card p-4 text-center">
-            <div className={`w-10 h-10 rounded-xl ${color} flex items-center justify-center mx-auto mb-3`}>
+          { n: '01', icon: Search,   title: 'Choisissez',   desc: 'Filtrez par rôle, secteur et ville', color: 'text-indigo-500 bg-indigo-50' },
+          { n: '02', icon: Calendar, title: 'Proposez',     desc: '3 créneaux · Réponse sous 24h',      color: 'text-amber-500 bg-amber-50' },
+          { n: '03', icon: Sparkles, title: 'Rencontrez',   desc: '30 min de valeur pure en visio',      color: 'text-emerald-500 bg-emerald-50' },
+        ].map(({ n, icon: Icon, title, desc, color }) => (
+          <div key={n} className="bg-white rounded-2xl border border-slate-100 p-5 text-center">
+            <div className={`w-10 h-10 ${color} rounded-xl flex items-center justify-center mx-auto mb-3`}>
               <Icon className="w-5 h-5" />
             </div>
-            <p className="font-bold text-sm text-slate-900" style={{fontFamily:'Syne,sans-serif'}}>{label}</p>
-            <p className="text-xs text-slate-500 mt-1">{desc}</p>
+            <p className="font-bold text-slate-900 text-sm mb-0.5" style={{ fontFamily: 'Syne,sans-serif' }}>{title}</p>
+            <p className="text-xs text-slate-400">{desc}</p>
           </div>
         ))}
       </div>
 
-      {/* Filters */}
-      <div className="card p-4">
-        <div className="flex flex-wrap gap-3">
-          <div className="relative flex-1 min-w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      {/* ── Filters ── */}
+      <div className="space-y-3">
+        {/* Role pills */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          <button
+            onClick={() => setRoleFilter('')}
+            className={cn(
+              'px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all border',
+              !roleFilter
+                ? 'bg-slate-900 text-white border-slate-900'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+            )}>
+            Tous les rôles
+          </button>
+          {ROLE_FILTERS.map(role => {
+            const cfg = ROLE_CONFIG[role] ?? DEFAULT_ROLE
+            const active = roleFilter === role
+            return (
+              <button key={role} onClick={() => setRoleFilter(active ? '' : role)}
+                className={cn(
+                  'px-4 py-2 rounded-full text-xs font-semibold whitespace-nowrap transition-all border',
+                  active ? cn('border text-white bg-gradient-to-r', cfg.gradient, 'border-transparent') : 'bg-white text-slate-500 border-slate-200 hover:border-slate-300'
+                )}>
+                {role}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Search + city */}
+        <div className="flex gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text" value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Rechercher un Master…"
-              className="input pl-9 text-sm" />
+              placeholder="Rechercher par nom, expertise…"
+              className="input pl-10 text-sm bg-white" />
           </div>
-          <select value={roleFilter} onChange={e => setRoleFilter(e.target.value)} className="input w-auto text-sm min-w-36">
-            <option value="">Tous les rôles</option>
-            {ROLES.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-          <select value={sectorFilter} onChange={e => setSectorFilter(e.target.value)} className="input w-auto text-sm min-w-40">
-            <option value="">Tous les secteurs</option>
-            {SECTORS.map(s => <option key={s} value={s}>{s}</option>)}
-          </select>
-          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)} className="input w-auto text-sm min-w-32">
+          <select value={cityFilter} onChange={e => setCityFilter(e.target.value)}
+            className="input w-auto min-w-36 text-sm bg-white">
             <option value="">Toutes les villes</option>
-            {CITIES.map(c => <option key={c} value={c}>{c}</option>)}
+            {cities.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-          {hasFilters && (
-            <button onClick={() => { setSearch(''); setRoleFilter(''); setSectorFilter(''); setCityFilter('') }}
-              className="btn-ghost text-sm text-slate-400">
-              Réinitialiser
+          {(search || roleFilter || cityFilter) && (
+            <button onClick={() => { setSearch(''); setRoleFilter(''); setCityFilter('') }}
+              className="px-4 py-2 text-sm text-slate-400 hover:text-slate-700 bg-white border border-slate-200 rounded-xl transition-colors whitespace-nowrap">
+              Effacer
             </button>
           )}
         </div>
       </div>
 
-      {/* Results */}
+      {/* ── Results count ── */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-slate-500">
+          <span className="font-semibold text-slate-900">{filtered.length}</span> Master{filtered.length > 1 ? 's' : ''} {roleFilter ? `· ${roleFilter}` : ''} {cityFilter ? `· ${cityFilter}` : ''}
+        </p>
+      </div>
+
+      {/* ── Grid ── */}
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-6 h-6 animate-spin text-amber-500" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl border border-slate-100 h-64 animate-pulse" />
+          ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="card p-16 text-center">
-          <Crown className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-          <p className="text-slate-500 mb-2">Aucun Master trouvé.</p>
-          <button onClick={() => { setSearch(''); setRoleFilter(''); setSectorFilter(''); setCityFilter('') }}
-            className="btn-secondary text-sm mt-2">Effacer les filtres</button>
+        <div className="bg-white rounded-2xl border border-slate-100 p-20 text-center">
+          <Crown className="w-10 h-10 text-slate-200 mx-auto mb-4" />
+          <p className="text-slate-400 font-medium mb-1">Aucun Master trouvé</p>
+          <p className="text-slate-300 text-sm">Essayez d&apos;autres filtres</p>
         </div>
       ) : (
-        <>
-          <p className="text-sm text-slate-500">
-            <span className="font-semibold text-slate-800">{filtered.length}</span> Master{filtered.length > 1 ? 's' : ''} disponible{filtered.length > 1 ? 's' : ''}
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {filtered.map(master => (
-              <MasterCard key={master.id} master={master} />
-            ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          {filtered.map((master, i) => (
+            <MasterCard key={master.id} master={master} index={i} />
+          ))}
+        </div>
+      )}
+
+      {/* ── Bottom CTA ── */}
+      {filtered.length > 0 && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-8 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+          <div>
+            <p className="font-bold text-slate-900 text-lg mb-1" style={{ fontFamily: 'Syne,sans-serif' }}>
+              Vous êtes décideur ? Rejoignez MeetMaster.
+            </p>
+            <p className="text-slate-500 text-sm">
+              Ouvrez votre agenda 4 fois/mois et soyez rémunéré 500 MAD par meeting.
+            </p>
           </div>
-        </>
+          <Link href="/meetmaster/apply"
+            className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 font-bold px-6 py-3 rounded-xl text-sm hover:shadow-md hover:shadow-amber-200 hover:-translate-y-0.5 transition-all whitespace-nowrap">
+            <Crown className="w-4 h-4" />
+            Devenir Master
+          </Link>
+        </div>
       )}
     </div>
   )
